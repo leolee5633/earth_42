@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Access</title>
+  <style>
+    :root{
+      --bg:#07070a;
+      --gold:#d4af37;
+      --muted:rgba(212,175,55,.75);
+      --text:rgba(255,255,255,.92);
+      --border:rgba(212,175,55,.22);
+      --danger:#ff6b6b;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; min-height:100vh;
+      display:flex; align-items:center; justify-content:center;
+      background:
+        radial-gradient(1200px 600px at 70% 20%, rgba(212,175,55,.12), transparent 60%),
+        radial-gradient(900px 500px at 20% 80%, rgba(212,175,55,.08), transparent 55%),
+        var(--bg);
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      letter-spacing:.25px;
+    }
+    .wrap{
+      width:min(520px, 92vw);
+      padding:30px 28px;
+      border:1px solid var(--border);
+      border-radius:18px;
+      background:linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.35));
+      box-shadow:0 24px 64px rgba(0,0,0,.55);
+      backdrop-filter:blur(6px);
+    }
+    h1{
+      margin:0 0 6px 0;
+      font-size:28px;
+      color:var(--gold);
+      font-family: ui-serif, Georgia, "Times New Roman", serif;
+    }
+    .sub{
+      margin:0 0 18px 0;
+      font-size:13px;
+      color:var(--muted);
+      line-height:1.5;
+    }
+    .line{
+      height:1px; margin:18px 0;
+      background:linear-gradient(90deg, transparent, rgba(212,175,55,.35), transparent);
+    }
+    label{ display:block; font-size:12px; color:var(--muted); margin-bottom:8px; }
+    input{
+      width:100%;
+      padding:14px 14px;
+      border-radius:12px;
+      border:1px solid rgba(212,175,55,.28);
+      background:rgba(0,0,0,.35);
+      color:rgba(255,255,255,.95);
+      outline:none;
+      font-size:15px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    input:focus{
+      border-color:rgba(212,175,55,.55);
+      box-shadow:0 0 0 4px rgba(212,175,55,.12);
+    }
+    button{
+      width:100%;
+      margin-top:14px;
+      padding:13px 14px;
+      border-radius:12px;
+      border:1px solid rgba(212,175,55,.38);
+      background:linear-gradient(180deg, rgba(212,175,55,.22), rgba(212,175,55,.08));
+      color:rgba(255,255,255,.92);
+      font-size:14px;
+      cursor:pointer;
+    }
+    button:hover{ border-color:rgba(212,175,55,.65); }
+    .err{ display:none; margin-top:10px; font-size:12px; color:var(--danger); }
+    .hint{ margin-top:10px; font-size:12px; color:rgba(255,255,255,.55); }
+    .foot{ margin-top:18px; font-size:11px; color:rgba(255,255,255,.38); text-align:right; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Access</h1>
+    <p class="sub">Invitation gateway. Enter the access code to continue.</p>
+    <div class="line"></div>
+
+    <label for="code">Access Code</label>
+    <input id="code" placeholder="••••••••••" autocomplete="off" />
+    <button id="btn">Continue</button>
+
+    <div class="err" id="err">Invalid code.</div>
+    <div class="hint">Tip: use the key you were given.</div>
+    <div class="foot">— Leo</div>
+  </div>
+
+  <script>
+    const input = document.getElementById("code");
+    const err = document.getElementById("err");
+    const btn = document.getElementById("btn");
+
+    async function go(){
+      err.style.display = "none";
+      btn.disabled = true;
+
+      const code = (input.value || "").trim();
+
+      try{
+        const res = await fetch("/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code })
+        });
+
+        if (res.ok){
+          const data = await res.json();
+          if (data && data.url){
+            window.location.href = data.url;
+            return;
+          }
+        }
+      }catch(e){}
+
+      err.style.display = "block";
+      btn.disabled = false;
+    }
+
+    btn.addEventListener("click", go);
+    input.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+  </script>
+</body>
+</html>
