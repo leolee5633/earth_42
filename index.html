@@ -115,14 +115,15 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code })
         });
-
-        if (res.ok){
-          const data = await res.json();
-          if (data && data.url){
-            window.location.href = data.url;
-            return;
-          }
+      
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.next) {
+          window.location.href = data.next;
+          return;
         }
+      }
+
       }catch(e){}
 
       err.style.display = "block";
