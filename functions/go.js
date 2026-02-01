@@ -1,31 +1,24 @@
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
-  const token = url.searchParams.get("token");
-  if (!token) return new Response("Missing token", { status: 400 });
 
-  // 这里复用你现有的 token 校验逻辑（略）
-  // 假设你已经有 verifyToken(token, env.SIGNING_KEY) -> payload or null
-  const payload = await verifyToken(token, env.SIGNING_KEY);
-  if (!payload) return new Response("Invalid token", { status: 401 });
+  // token 由 /verify 发放，存到 cookie 里，后续 /issue /status 都靠它
+  const invite = url.searchParams.get("t") || url.searchParams.get("token");
+  if (!invite) return new Response("Missing token", { status: 400 });
 
-  // ✅ 写 Cookie：HttpOnly + SameSite=Lax（允许从石墨跳回时携带）
-  const cookie = [
-    `invite=${encodeURIComponent(token)}`,
-    "Path=/",
-    "HttpOnly",
-    "Secure",
-    "SameSite=Lax",
-    "Max-Age=604800" // 7天
-  ].join("; ");
+  const location = env.FORM_URL; // 你的石墨问卷链接（放 env，不要写前端）
 
-return Response.redirect(env.FORM_URL, 302, {
-  headers: {
-    "Set-Cookie": "invite=xxx; Path=/; HttpOnly; Secure; SameSite=Lax"
-  }
-});
+  const headers = new Headers();
+  headers.set("Location", location);
 
+  // 关键：SameSite=Lax，Path=/，Secure（pages.dev 是 https）
+  headers.append(
+    "Set-Cookie",
+    `invite=${encodeURIComponent(invite)}; Path=/; Max-Age=604800; HttpOnly; Secure; SameSite=Lax`
+  );
 
+  return new Response(null, { status: 302, headers });
 }
+
 
 async function verifyToken(token, signingKey) {
   try {
