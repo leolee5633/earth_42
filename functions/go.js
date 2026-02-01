@@ -23,11 +23,7 @@ return Response.redirect(env.FORM_URL, 302, {
     "Set-Cookie": "invite=xxx; Path=/; HttpOnly; Secure; SameSite=Lax"
   }
 });
-return Response.redirect(env.FORM_URL, 302, {
-  headers: {
-    "Set-Cookie": "invite=xxx; Path=/; HttpOnly; Secure; SameSite=Lax"
-  }
-});
+
 
 }
 
