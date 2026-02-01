@@ -130,14 +130,22 @@
         body: JSON.stringify({ code })
       });
 
-      if (!res.ok) {
-        // 尝试读取更清晰的错误信息
-        let t = "";
-        try { t = await res.text(); } catch(e){}
-        showErr(t || "Invalid code.");
-        btn.disabled = false;
+    if (res.ok) {
+      const data = await res.json();
+    
+      // ✅ 新增：如果 /verify 返回 token，就跳到 /go 让它写 cookie 并 302 到石墨
+      if (data && data.token) {
+        window.location.assign(`/go?token=${encodeURIComponent(data.token)}`);
         return;
       }
+    
+      // 兼容旧版：如果返回 next，也照常跳
+      if (data && data.next) {
+        window.location.assign(data.next);
+        return;
+      }
+    }
+
 
       const data = await res.json();
       if (!data || !data.token) {
