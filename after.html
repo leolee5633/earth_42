@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Issued</title>
+  <style>
+    :root{--bg:#07070a;--gold:#d4af37;--muted:rgba(212,175,55,.75);--text:rgba(255,255,255,.92);--border:rgba(212,175,55,.22);}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+      background:radial-gradient(1200px 600px at 70% 20%, rgba(212,175,55,.12), transparent 60%),
+      radial-gradient(900px 500px at 20% 80%, rgba(212,175,55,.08), transparent 55%),var(--bg);
+      color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
+    .wrap{width:min(560px,92vw);padding:30px 28px;border:1px solid var(--border);border-radius:18px;
+      background:linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.35));box-shadow:0 24px 64px rgba(0,0,0,.55);backdrop-filter:blur(6px);}
+    h1{margin:0 0 10px 0;font-size:26px;color:var(--gold);font-family:ui-serif,Georgia,"Times New Roman",serif;}
+    .sub{margin:0 0 18px 0;font-size:13px;color:var(--muted);line-height:1.6;}
+    .code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:26px;letter-spacing:2px;
+      padding:14px 16px;border:1px solid rgba(212,175,55,.28);border-radius:14px;background:rgba(0,0,0,.35);display:inline-block;}
+    .btn{display:block;width:100%;margin-top:18px;padding:13px 14px;border-radius:12px;border:1px solid rgba(212,175,55,.38);
+      background:linear-gradient(180deg, rgba(212,175,55,.22), rgba(212,175,55,.08));color:rgba(255,255,255,.92);font-size:14px;cursor:pointer;}
+    .btn:hover{border-color:rgba(212,175,55,.65);}
+    .foot{margin-top:18px;font-size:11px;color:rgba(255,255,255,.38);text-align:right;}
+    .err{margin-top:10px;color:#ff6b6b;font-size:12px;display:none;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Confirmed.</h1>
+    <p class="sub">Your personal access code has been issued. Save it — you’ll use it to view the countdown and reveal the location.</p>
+
+    <div id="codeBox" class="code">ISSUING…</div>
+    <div id="err" class="err">Unable to issue code. Please refresh.</div>
+
+    <button id="go" class="btn" disabled>Go to Countdown</button>
+    <div class="foot">— Leo</div>
+  </div>
+
+  <script>
+    const codeBox = document.getElementById("codeBox");
+    const err = document.getElementById("err");
+    const btn = document.getElementById("go");
+    let issued = null;
+
+    async function issue(){
+      try{
+        const res = await fetch("/issue", { method:"POST", headers:{ "Content-Type":"application/json" }, body:"{}" });
+        if(!res.ok) throw new Error("issue failed");
+        const data = await res.json();
+        issued = (data.code || "").toUpperCase();
+        if(!issued) throw new Error("no code");
+        codeBox.textContent = issued;
+        localStorage.setItem("personal_code", issued);
+        btn.disabled = false;
+      }catch(e){
+        err.style.display = "block";
+        codeBox.textContent = "ERROR";
+      }
+    }
+
+    btn.addEventListener("click", () => {
+      // 你也可以改成 /countdown.html?code=XXXXXX 自动带入
+      window.location.href = "/countdown.html";
+    });
+
+    issue();
+  </script>
+</body>
+</html>
