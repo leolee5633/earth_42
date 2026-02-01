@@ -1,31 +1,37 @@
+// functions/go.js
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
 
-  // token 由 /verify 发放，存到 cookie 里，后续 /issue /status 都靠它
-  const invite = url.searchParams.get("t") || url.searchParams.get("token");
+  const invite = url.searchParams.get("token") || url.searchParams.get("t");
   if (!invite) return new Response("Missing token", { status: 400 });
 
-  const location = env.FORM_URL; // 你的石墨问卷链接（放 env，不要写前端）
+  const ok = await verifyToken(invite, env.SIGNING_KEY);
+  if (!ok) return new Response("Invalid token", { status: 401 });
+
+  const location = env.FORM_URL;
+  if (!location) return new Response("Missing FORM_URL", { status: 500 });
 
   const headers = new Headers();
   headers.set("Location", location);
 
-  // 关键：SameSite=Lax，Path=/，Secure（pages.dev 是 https）
   headers.append(
     "Set-Cookie",
     `invite=${encodeURIComponent(invite)}; Path=/; Max-Age=604800; HttpOnly; Secure; SameSite=Lax`
   );
 
+  headers.set("Cache-Control", "no-store");
+
   return new Response(null, { status: 302, headers });
 }
 
-
+// ====== 两段 token 校验：payloadB64.sigB64 ======
 async function verifyToken(token, signingKey) {
   try {
     if (!token || token.indexOf(".") === -1) return false;
     if (!signingKey) return false;
 
     const [payloadB64, sigB64] = token.split(".");
+    if (!payloadB64 || !sigB64) return false;
 
     const enc = new TextEncoder();
     const key = await crypto.subtle.importKey(
