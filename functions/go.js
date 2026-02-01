@@ -18,9 +18,17 @@ export async function onRequestGet({ request, env }) {
     "Max-Age=604800" // 7天
   ].join("; ");
 
-  return Response.redirect(env.FORM_URL, 302, {
-    headers: { "Set-Cookie": cookie }
-  });
+return Response.redirect(env.FORM_URL, 302, {
+  headers: {
+    "Set-Cookie": "invite=xxx; Path=/; HttpOnly; Secure; SameSite=Lax"
+  }
+});
+return Response.redirect(env.FORM_URL, 302, {
+  headers: {
+    "Set-Cookie": "invite=xxx; Path=/; HttpOnly; Secure; SameSite=Lax"
+  }
+});
+
 }
 
 async function verifyToken(token, signingKey) {
