@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Countdown</title>
+  <style>
+    :root{--bg:#07070a;--gold:#d4af37;--muted:rgba(212,175,55,.75);--text:rgba(255,255,255,.92);--border:rgba(212,175,55,.22);--danger:#ff6b6b;}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+      background:radial-gradient(1200px 600px at 70% 20%, rgba(212,175,55,.12), transparent 60%),
+      radial-gradient(900px 500px at 20% 80%, rgba(212,175,55,.08), transparent 55%),var(--bg);
+      color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
+    .wrap{width:min(620px,92vw);padding:30px 28px;border:1px solid var(--border);border-radius:18px;
+      background:linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.35));box-shadow:0 24px 64px rgba(0,0,0,.55);backdrop-filter:blur(6px);}
+    h1{margin:0 0 10px 0;font-size:26px;color:var(--gold);font-family:ui-serif,Georgia,"Times New Roman",serif;}
+    .sub{margin:0 0 18px 0;font-size:13px;color:var(--muted);line-height:1.6;}
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px;}
+    input{width:100%;padding:14px 14px;border-radius:12px;border:1px solid rgba(212,175,55,.28);background:rgba(0,0,0,.35);
+      color:rgba(255,255,255,.95);outline:none;font-size:16px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;letter-spacing:2px;}
+    button{width:100%;margin-top:14px;padding:13px 14px;border-radius:12px;border:1px solid rgba(212,175,55,.38);
+      background:linear-gradient(180deg, rgba(212,175,55,.22), rgba(212,175,55,.08));color:rgba(255,255,255,.92);font-size:14px;cursor:pointer;}
+    .err{display:none;margin-top:10px;font-size:12px;color:var(--danger);}
+    .panel{margin-top:18px;padding:16px;border:1px solid rgba(212,175,55,.22);border-radius:14px;background:rgba(0,0,0,.25);display:none;}
+    .big{font-size:44px;color:var(--gold);font-family:ui-serif,Georgia,"Times New Roman",serif;margin:0;}
+    .loc{margin-top:10px;font-size:16px;line-height:1.6;}
+    .foot{margin-top:18px;font-size:11px;color:rgba(255,255,255,.38);text-align:right;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Countdown</h1>
+    <p class="sub">Enter your personal access code to view the countdown. The location will be revealed when time is up.</p>
+
+    <label for="code">Personal Code</label>
+    <input id="code" placeholder="XXXXXX" autocomplete="off" />
+    <button id="btn">View</button>
+    <div class="err" id="err">Invalid code.</div>
+
+    <div class="panel" id="panel">
+      <p class="big" id="big">—</p>
+      <div class="loc" id="loc"></div>
+    </div>
+
+    <div class="foot">— Leo</div>
+  </div>
+
+  <script>
+    const input = document.getElementById("code");
+    const btn = document.getElementById("btn");
+    const err = document.getElementById("err");
+    const panel = document.getElementById("panel");
+    const big = document.getElementById("big");
+    const loc = document.getElementById("loc");
+
+    const saved = localStorage.getItem("personal_code");
+    if (saved) input.value = saved;
+
+    async function view(){
+      err.style.display="none";
+      panel.style.display="none";
+      const code = (input.value||"").toUpperCase().trim();
+      if(!code) return;
+
+      try{
+        const res = await fetch("/status", {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ code })
+        });
+        if(!res.ok) throw new Error("bad");
+        const data = await res.json();
+
+        localStorage.setItem("personal_code", code);
+
+        panel.style.display="block";
+        if (data.unlocked) {
+          big.textContent = "REVEALED";
+          loc.textContent = "Location: " + (data.location || "");
+        } else {
+          big.textContent = data.daysLeft + " days";
+          loc.textContent = "Location will be revealed after the countdown ends.";
+        }
+      }catch(e){
+        err.style.display="block";
+      }
+    }
+
+    btn.addEventListener("click", view);
+    input.addEventListener("keydown", e => { if (e.key === "Enter") view(); });
+  </script>
+</body>
+</html>
