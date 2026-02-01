@@ -1,27 +1,50 @@
+// functions/verify.js
 export async function onRequestPost({ request, env }) {
   try {
     const { code } = await request.json();
 
-    const input = String(code || "").trim();
-    const expected = String(env.ACCESS_CODE || "").trim();
-    if (!expected) return new Response("Server not configured.", { status: 500 });
+    const input = normalize(code);
+    const ACCESS_CODE = normalize(env.ACCESS_CODE || "0203"); // ✅ 放 env 更安全
+    if (input !== ACCESS_CODE) {
+      return json({ error: "Invalid access code." }, 401);
+    }
 
-    if (input !== expected) return new Response("Invalid access code.", { status: 401 });
+    // ✅ 生成两段 token：payloadB64.sigB64
+    const exp = Date.now() + 1000 * 60 * 60 * 24 * 7; // 7天
+    const payload = { exp };
+    const payloadB64 = base64url(JSON.stringify(payload));
 
-    // 10分钟有效 token
-    const exp = Date.now() + 10 * 60 * 1000;
-    const payload = JSON.stringify({ exp });
-    const token = await signToken(payload, env.SIGNING_KEY);
+    const sigB64 = await hmacSignB64url(payloadB64, env.SIGNING_KEY);
+    const token = `${payloadB64}.${sigB64}`;
 
-    return new Response(JSON.stringify({ token }), {
-      headers: { "Content-Type": "application/json" },
-    });
+    const next = `/go?token=${encodeURIComponent(token)}`;
+
+    return json({ token, next }, 200);
   } catch (e) {
-    return new Response("Bad request.", { status: 400 });
+    return json({ error: "Bad request." }, 400);
   }
 }
 
-async function signToken(payloadJson, signingKey) {
+function normalize(s) {
+  return (s || "").toString().trim().toUpperCase().replace(/\s+/g, "");
+}
+
+function json(obj, status = 200) {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  });
+}
+
+function base64url(str) {
+  const b64 = btoa(unescape(encodeURIComponent(str)));
+  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function hmacSignB64url(message, signingKey) {
   if (!signingKey) throw new Error("Missing SIGNING_KEY");
 
   const enc = new TextEncoder();
@@ -33,15 +56,14 @@ async function signToken(payloadJson, signingKey) {
     ["sign"]
   );
 
-  const payloadB64 = base64url(enc.encode(payloadJson));
-  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(payloadB64));
-  const sigB64 = base64url(new Uint8Array(sig));
-
-  return `${payloadB64}.${sigB64}`;
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(message));
+  const bytes = new Uint8Array(sig);
+  return toBase64url(bytes);
 }
 
-function base64url(bytes) {
-  let str = "";
-  bytes.forEach((b) => (str += String.fromCharCode(b)));
-  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+function toBase64url(bytes) {
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  const b64 = btoa(bin);
+  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
