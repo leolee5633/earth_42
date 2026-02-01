@@ -1,13 +1,26 @@
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
-  const token = url.searchParams.get("token") || "";
+  const token = url.searchParams.get("token");
+  if (!token) return new Response("Missing token", { status: 400 });
 
-  if (!env.FORM_URL) return new Response("Server not configured.", { status: 500 });
+  // 这里复用你现有的 token 校验逻辑（略）
+  // 假设你已经有 verifyToken(token, env.SIGNING_KEY) -> payload or null
+  const payload = await verifyToken(token, env.SIGNING_KEY);
+  if (!payload) return new Response("Invalid token", { status: 401 });
 
-  const ok = await verifyToken(token, env.SIGNING_KEY);
-  if (!ok) return new Response("Invalid or expired token.", { status: 401 });
+  // ✅ 写 Cookie：HttpOnly + SameSite=Lax（允许从石墨跳回时携带）
+  const cookie = [
+    `invite=${encodeURIComponent(token)}`,
+    "Path=/",
+    "HttpOnly",
+    "Secure",
+    "SameSite=Lax",
+    "Max-Age=604800" // 7天
+  ].join("; ");
 
-  return Response.redirect(env.FORM_URL, 302);
+  return Response.redirect(env.FORM_URL, 302, {
+    headers: { "Set-Cookie": cookie }
+  });
 }
 
 async function verifyToken(token, signingKey) {
