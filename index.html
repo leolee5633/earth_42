@@ -98,40 +98,68 @@
     <div class="foot">— Leo</div>
   </div>
 
-  <script>
-    const input = document.getElementById("code");
-    const err = document.getElementById("err");
-    const btn = document.getElementById("btn");
+<script>
+  const input = document.getElementById("code");
+  const err = document.getElementById("err");
+  const btn = document.getElementById("btn");
 
-    async function go(){
-      err.style.display = "none";
-      btn.disabled = true;
+  function showErr(msg){
+    err.textContent = msg || "Invalid code.";
+    err.style.display = "block";
+  }
+  function clearErr(){
+    err.style.display = "none";
+    err.textContent = "Invalid code.";
+  }
 
-      const code = (input.value || "").trim();
+  async function go(){
+    clearErr();
+    btn.disabled = true;
 
-      try{
-        const res = await fetch("/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code })
-        });
-      
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.next) {
-          window.location.href = data.next;
-          return;
-        }
-      }
-
-      }catch(e){}
-
-      err.style.display = "block";
+    const code = (input.value || "").trim();
+    if(!code){
+      showErr("Please enter the access code.");
       btn.disabled = false;
+      return;
     }
 
-    btn.addEventListener("click", go);
-    input.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
-  </script>
+    try{
+      const res = await fetch("/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code })
+      });
+
+      if (!res.ok) {
+        // 尝试读取更清晰的错误信息
+        let t = "";
+        try { t = await res.text(); } catch(e){}
+        showErr(t || "Invalid code.");
+        btn.disabled = false;
+        return;
+      }
+
+      const data = await res.json();
+      if (!data || !data.token) {
+        showErr("Unexpected response.");
+        btn.disabled = false;
+        return;
+      }
+
+      // ✅ 不暴露石墨链接：交给 /go 由 Functions 302 跳转
+      window.location.href = "/go?token=" + encodeURIComponent(data.token);
+      return;
+
+    } catch(e){
+      showErr("Network error. Please try again.");
+    }
+
+    btn.disabled = false;
+  }
+
+  btn.addEventListener("click", go);
+  input.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+</script>
+
 </body>
 </html>
